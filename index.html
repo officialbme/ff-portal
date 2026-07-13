@@ -92,12 +92,24 @@
 
     // ==== requests ====
     function reqPill(s){ s=String(s||'').toUpperCase();
-      if(s==='MEASURE_PROPOSED') return '<span class="pill p-enroute">Measure proposed</span>';
-      if(s==='MEASURE_ACCEPTED') return '<span class="pill p-done">Measure confirmed</span>';
-      if(s==='MEASURE_DECLINED') return '<span class="pill p-cancel">You declined — we\'ll re-propose</span>';
-      if(s==='SCHEDULED') return '<span class="pill p-done">Scheduled</span>';
-      return '<span class="pill p-sched">Submitted</span>';
+      var map={
+        'MEASURE_PROPOSED':['p-enroute','Measure proposed'],
+        'MEASURE_ACCEPTED':['p-done','Measure accepted'],
+        'MEASURE_DECLINED':['p-cancel','You declined — we\'ll re-propose'],
+        'MEASURE_SCHEDULED':['p-done','Measure scheduled'],
+        'SCHEDULED':['p-done','Measure scheduled'],
+        'ESTIMATE_SENT':['p-enroute','Estimate ready'],
+        'ESTIMATE_APPROVED':['p-done','Estimate approved'],
+        'ESTIMATE_DECLINED':['p-cancel','Estimate declined'],
+        'READY_SET':['p-done','Ready date set'],
+        'INSTALL_PROPOSED':['p-enroute','Install proposed'],
+        'INSTALL_APPROVED':['p-done','Install confirmed 🎉'],
+        'INSTALL_DECLINED':['p-cancel','Install declined']
+      };
+      var m=map[s]||['p-sched','Submitted'];
+      return '<span class="pill '+m[0]+'">'+m[1]+'</span>';
     }
+    var COMMITTED=['MEASURE_SCHEDULED','SCHEDULED','ESTIMATE_SENT','ESTIMATE_APPROVED','ESTIMATE_DECLINED','READY_SET','INSTALL_PROPOSED','INSTALL_APPROVED','INSTALL_DECLINED','DONE'];
     var EDITING = '';
     function showReqForm(existing){
       EDITING = existing ? existing.id : '';
@@ -133,21 +145,79 @@
       if(!confirm('Delete this job request for '+(r.customer||'this customer')+'? The Flow Factory team will be notified.')) return;
       jsonp({api:'deleteRequest', code:CODE, requestId:id}, function(res){ if(res&&res.ok){ load(); } else { alert((res&&res.error)||'Could not delete.'); } });
     }
+    function statusLine(r){
+      var s=String(r.status||'').toUpperCase();
+      var m={
+        'SUBMITTED':'Submitted — we\'ll propose a day to measure.',
+        'MEASURE_PROPOSED':'We proposed a day to measure — accept below.',
+        'MEASURE_ACCEPTED':'Measure accepted — we\'ll confirm the schedule.',
+        'MEASURE_SCHEDULED':'Measure scheduled'+(r.measureDate?(' for '+esc(r.measureDate)):'')+'.',
+        'SCHEDULED':'Measure scheduled'+(r.measureDate?(' for '+esc(r.measureDate)):'')+'.',
+        'ESTIMATE_SENT':'Your estimate is ready — review and approve below.',
+        'ESTIMATE_APPROVED':'Estimate approved — set your "ready after" date below.',
+        'ESTIMATE_DECLINED':'You declined the estimate — we\'ll follow up.',
+        'READY_SET':'Ready after '+esc(r.readyAfter||'')+' — we\'ll schedule the install.',
+        'INSTALL_PROPOSED':'Install date proposed — approve below.',
+        'INSTALL_APPROVED':'Install confirmed'+(r.installDate?(' for '+esc(r.installDate)):'')+'. 🎉',
+        'INSTALL_DECLINED':'You declined the install date — we\'ll re-propose.'
+      };
+      return m[s]||esc(s.replace(/_/g,' '));
+    }
+    function diagramBlock(r){
+      var d=r.diagram||[]; if(!d.length) return '';
+      return '<div style="margin-top:10px;"><div class="lbl">Gutter diagram</div>'+d.map(function(x){
+        return '<a href="'+esc(x.url)+'" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:var(--accent);font-weight:700;">'+
+          (x.thumb?'<img src="'+esc(x.thumb)+'" alt="diagram" style="width:100%;border-radius:10px;border:1px solid var(--line);display:block;">':'📐 View diagram')+'</a>';
+      }).join('')+'</div>';
+    }
+    function estimateBlock(r){
+      if(!(Number(r.estimateTotal)>0)) return '';
+      var lf=Number(r.lf)||0, waste=Number(r.wasteFt)||10, rate=Number(r.rate)||0, billed=lf+waste;
+      return '<div style="margin-top:10px;padding:10px 12px;background:#f8fafc;border:1px dashed var(--line);border-radius:10px;">'+
+        '<div class="lbl">Estimate</div>'+
+        '<div style="font-size:13px;">'+lf+' LF measured <span style="color:var(--muted);">+ '+waste+' ft waste</span> = '+billed+' ft × $'+rate+'/ft</div>'+
+        '<div style="font-size:22px;font-weight:800;color:var(--green);margin-top:4px;">$'+Number(r.estimateTotal).toFixed(2)+'</div>'+
+        '<div class="addr" style="margin-top:2px;">Includes '+waste+' ft added for waste.</div></div>';
+    }
+    function docsBlock(r){
+      var d=r.docs||[]; if(!d.length) return '';
+      return '<div class="addr" style="margin-top:8px;">Files: '+d.map(function(x){ return '<a href="'+esc(x.url)+'" target="_blank" rel="noopener">'+esc(x.name||'file')+'</a>'; }).join(' · ')+'</div>';
+    }
     function renderRequests(list){
       REQS=list||[]; var el=document.getElementById('reqList');
-      var open=REQS.filter(function(r){ return r.status!=='SCHEDULED'; });
-      if(!open.length){ el.innerHTML=''; return; }
-      el.innerHTML='<div class="lbl">Your requests</div>'+open.map(function(r){
+      if(!REQS.length){ el.innerHTML=''; return; }
+      el.innerHTML='<div class="lbl">Your jobs</div>'+REQS.map(function(r){
+        var s=String(r.status||'').toUpperCase();
         var actions='';
-        if(String(r.status).toUpperCase()==='MEASURE_PROPOSED') actions='<div style="margin-top:8px;"><button class="dirbtn" style="background:var(--green);" onclick="respond(\''+r.id+'\',true)">Accept '+esc(r.measureDate)+'</button> <button class="dirbtn" style="background:var(--bad);" onclick="respond(\''+r.id+'\',false)">Decline</button></div>';
-        var manage='<div style="margin-top:8px;"><button class="dirbtn" style="background:var(--accent);padding:6px 12px;" onclick="editRequest(\''+r.id+'\')">Edit</button> <button class="dirbtn" style="background:var(--bad);padding:6px 12px;" onclick="deleteRequest(\''+r.id+'\')">Delete</button></div>';
+        if(s==='MEASURE_PROPOSED') actions='<div style="margin-top:8px;"><button class="dirbtn" style="background:var(--green);" onclick="respond(\''+r.id+'\',true)">Accept '+esc(r.measureDate)+'</button> <button class="dirbtn" style="background:var(--bad);" onclick="respond(\''+r.id+'\',false)">Decline</button></div>';
+        else if(s==='ESTIMATE_SENT') actions='<div style="margin-top:8px;"><button class="dirbtn" style="background:var(--green);" onclick="respondEstimate(\''+r.id+'\',true)">Approve estimate</button> <button class="dirbtn" style="background:var(--bad);" onclick="respondEstimate(\''+r.id+'\',false)">Decline</button></div>';
+        else if(s==='ESTIMATE_APPROVED') actions='<div style="margin-top:8px;"><span class="addr">When can we install after?</span><br><input type="date" id="ra_'+r.id+'" style="margin:6px 0;"><br><button class="dirbtn" style="background:var(--green);" onclick="setReady(\''+r.id+'\')">Set ready-after date</button></div>';
+        else if(s==='INSTALL_PROPOSED') actions='<div style="margin-top:8px;"><button class="dirbtn" style="background:var(--green);" onclick="respondInstall(\''+r.id+'\',true)">Approve '+esc(r.installDate)+'</button> <button class="dirbtn" style="background:var(--bad);" onclick="respondInstall(\''+r.id+'\',false)">Decline</button></div>';
+        var committed = COMMITTED.indexOf(s)!==-1;
+        var manage='<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--line);">'+
+          '<button class="dirbtn" style="background:var(--accent);padding:6px 12px;" onclick="editRequest(\''+r.id+'\')">Edit</button> '+
+          (committed?'':'<button class="dirbtn" style="background:var(--bad);padding:6px 12px;" onclick="deleteRequest(\''+r.id+'\')">Delete</button> ')+
+          '<label class="dirbtn" style="background:var(--muted);padding:6px 12px;cursor:pointer;">📎 Attach file<input type="file" style="display:none;" onchange="attachReqFile(this,\''+r.id+'\')"></label></div>';
         return '<div class="job"><div class="job-head"><div><div class="cust">'+esc(r.customer||'')+'</div><div class="addr">'+esc(r.address||'')+'</div></div>'+reqPill(r.status)+'</div>'+
-          (r.measureDate?('<div class="meta"><div>Measure: <b>'+esc(r.measureDate)+'</b></div></div>'):'')+
-          (r.notes?('<div class="addr" style="margin-top:6px;">'+esc(r.notes)+'</div>'):'')+ actions + manage +'</div>';
+          '<div class="addr" style="margin-top:6px;color:var(--ink);">'+statusLine(r)+'</div>'+
+          (r.notes?('<div class="addr" style="margin-top:6px;">'+esc(r.notes)+'</div>'):'')+
+          diagramBlock(r)+ estimateBlock(r)+ docsBlock(r)+ actions + manage +'</div>';
       }).join('');
     }
-    function respond(id, accept){
-      jsonp({api:'respond', code:CODE, requestId:id, accept:accept}, function(){ load(); });
+    function respond(id, accept){ jsonp({api:'respond', code:CODE, requestId:id, accept:accept}, function(r){ if(r&&r.ok) load(); else alert((r&&r.error)||'Failed.'); }); }
+    function respondEstimate(id, ok){ if(!ok && !confirm('Decline this estimate?')) return; jsonp({api:'respondEstimate', code:CODE, requestId:id, approve:ok}, function(r){ if(r&&r.ok) load(); else alert((r&&r.error)||'Failed.'); }); }
+    function setReady(id){ var v=document.getElementById('ra_'+id).value; if(!v){ alert('Pick a date.'); return; } var dp=v.split('-'), d=dp.length===3?(Number(dp[1])+'/'+Number(dp[2])+'/'+dp[0]):v; jsonp({api:'setReadyAfter', code:CODE, requestId:id, date:d}, function(r){ if(r&&r.ok) load(); else alert((r&&r.error)||'Failed.'); }); }
+    function respondInstall(id, ok){ if(!ok && !confirm('Decline this install date?')) return; jsonp({api:'respondInstall', code:CODE, requestId:id, approve:ok}, function(r){ if(r&&r.ok) load(); else alert((r&&r.error)||'Failed.'); }); }
+    function attachReqFile(input,id){
+      var f=input.files&&input.files[0]; if(!f) return;
+      if(f.size>40*1024*1024){ alert('File too big (max 40MB).'); return; }
+      var rd=new FileReader();
+      rd.onload=function(){
+        fetch(APPS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'contractorReqDoc',code:CODE,requestId:id,dataUrl:rd.result,filename:f.name})})
+          .then(function(){ setTimeout(load,1500); }).catch(function(){ alert('Upload failed.'); });
+      };
+      rd.readAsDataURL(f);
+      input.value='';
     }
 
     // ==== docs + jobs ====
