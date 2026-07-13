@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Flow Factory — Contractor Portal</title>
+  <style>
+    :root { --navy:#0f2440; --green:#16a34a; --line:#e2e8f0; --muted:#64748b; --bg:#f1f5f9; --accent:#1b3a63; --bad:#dc2626; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--bg); color:#0f172a; }
+    .top { background:var(--navy); color:#fff; padding:16px 18px; }
+    .brand { font-weight:800; letter-spacing:.12em; font-size:16px; }
+    .co { font-size:20px; font-weight:800; margin-top:4px; }
+    .wrap { max-width:760px; margin:0 auto; padding:16px; }
+    .job { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:12px; box-shadow:0 1px 3px rgba(15,36,64,.05); }
+    .job-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; cursor:pointer; }
+    .cust { font-weight:700; font-size:16px; }
+    .addr { color:var(--muted); font-size:13px; margin-top:2px; }
+    .pill { font-size:11px; font-weight:800; padding:4px 9px; border-radius:999px; white-space:nowrap; text-transform:uppercase; letter-spacing:.03em; }
+    .p-sched { background:#eef2f7; color:#475569; }
+    .p-enroute { background:#fef3c7; color:#92400e; }
+    .p-done { background:#dcfce7; color:#166534; }
+    .p-cancel { background:#fee2e2; color:#991b1b; }
+    .meta { display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:10px; font-size:13px; color:#334155; }
+    .meta b { color:#0f172a; }
+    .detail { margin-top:12px; border-top:1px solid var(--line); padding-top:12px; display:none; }
+    .detail.open { display:block; }
+    .lbl { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); font-weight:700; margin-bottom:6px; }
+    .map img, .photos img { width:100%; border-radius:10px; display:block; }
+    .photos { display:flex; flex-wrap:wrap; gap:6px; }
+    .photos img { width:96px; height:96px; object-fit:cover; }
+    .photos a.file { display:inline-flex; align-items:center; justify-content:center; width:96px; height:96px; border:1px solid var(--line); border-radius:10px; font-size:12px; font-weight:700; color:var(--accent); text-decoration:none; text-align:center; padding:4px; }
+    .empty { color:var(--muted); text-align:center; padding:40px 12px; }
+    .skel { color:var(--muted); font-size:13px; padding:10px 0; }
+    .dirbtn { display:inline-block; margin-top:8px; background:var(--accent); color:#fff; text-decoration:none; padding:8px 14px; border-radius:8px; font-size:13px; font-weight:700; border:0; cursor:pointer; }
+    input, textarea { width:100%; padding:9px; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; font-size:15px; font-family:inherit; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div class="brand">FLOW FACTORY</div>
+    <div class="co" id="coName">Contractor Portal</div>
+  </div>
+  <div class="wrap">
+    <button id="reqBtn" class="dirbtn" style="background:var(--green);margin-bottom:14px;" onclick="showReqForm()">+ Submit a new job</button>
+    <div id="reqForm"></div>
+    <div id="reqList"></div>
+    <div id="docsLbl" class="lbl" style="display:none;">Our documents</div>
+    <div id="docs"></div>
+    <div class="lbl" id="jobsLbl" style="display:none;">Scheduled jobs</div>
+    <div id="jobs"><div class="skel">Loading…</div></div>
+  </div>
+
+  <script>
+    // ==== config ====
+    var APPS = 'https://script.google.com/macros/s/AKfycbxtuuH3QOzdpMlPr2Y_8Jg0qv33sI2Gw01zUPUvHINZ5mVzQNMclRZgr5SKDyQf89Ls/exec';
+    function qs(k){ var m=new RegExp('[?&]'+k+'=([^&]*)').exec(location.search); return m?decodeURIComponent(m[1].replace(/\+/g,' ')):''; }
+    var CODE = qs('code');
+    var JOBS = [], REQS = [];
+
+    // ==== JSONP (no CORS, no Google sandbox) ====
+    var _n = 0;
+    function jsonp(params, cb){
+      var name = 'ffcb_' + (++_n) + '_' + Math.floor(Math.random()*1e6);
+      var s = document.createElement('script');
+      var timer = setTimeout(function(){ done({ok:false, error:'Timed out.'}); }, 20000);
+      function done(data){ if(!window[name]) return; clearTimeout(timer); try{ delete window[name]; }catch(e){ window[name]=undefined; } if(s.parentNode) s.parentNode.removeChild(s); cb(data); }
+      window[name] = function(data){ done(data); };
+      var q = Object.keys(params).map(function(k){ return encodeURIComponent(k)+'='+encodeURIComponent(params[k]==null?'':params[k]); }).join('&');
+      s.src = APPS + '?' + q + '&callback=' + name;
+      s.onerror = function(){ done({ok:false, error:'Network error.'}); };
+      document.body.appendChild(s);
+    }
+
+    function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+    function pill(s){ s=String(s||'').toUpperCase();
+      if(s==='DONE') return '<span class="pill p-done">Done</span>';
+      if(s==='ENROUTE') return '<span class="pill p-enroute">En route</span>';
+      if(s==='CANCELLED') return '<span class="pill p-cancel">Cancelled</span>';
+      return '<span class="pill p-sched">Scheduled</span>';
+    }
+    function scope(j){ var p=[]; if(Number(j.gutter))p.push(j.gutter+"' gutter"); if(Number(j.filter))p.push(j.filter+"' filter"); if(Number(j.drip))p.push(j.drip+"' drip edge"); return p.join(' · ')||(String(j.type).toUpperCase()==='SERVICE'?'Service call':'—'); }
+
+    function load(){
+      if(!CODE){ document.getElementById('jobs').innerHTML='<div class="empty">Missing access link.</div>'; return; }
+      jsonp({api:'portal', code:CODE}, function(r){
+        if(!r || !r.ok){ document.getElementById('jobs').innerHTML='<div class="empty">'+esc((r&&r.error)||'This link is invalid or expired.')+'</div>'; return; }
+        render(r.data||{});
+        renderRequests(r.requests||[]);
+      });
+    }
+
+    // ==== requests ====
+    function reqPill(s){ s=String(s||'').toUpperCase();
+      if(s==='MEASURE_PROPOSED') return '<span class="pill p-enroute">Measure proposed</span>';
+      if(s==='MEASURE_ACCEPTED') return '<span class="pill p-done">Measure confirmed</span>';
+      if(s==='MEASURE_DECLINED') return '<span class="pill p-cancel">You declined — we\'ll re-propose</span>';
+      if(s==='SCHEDULED') return '<span class="pill p-done">Scheduled</span>';
+      return '<span class="pill p-sched">Submitted</span>';
+    }
+    function showReqForm(){
+      document.getElementById('reqForm').innerHTML =
+        '<div class="job"><div class="cust" style="margin-bottom:8px;">New job</div>'+
+        '<input id="rqCust" placeholder="Customer name *">'+
+        '<input id="rqAddr" placeholder="Address">'+
+        '<input id="rqPhone" placeholder="Phone" inputmode="numeric">'+
+        '<textarea id="rqNotes" rows="3" placeholder="Job description / notes"></textarea>'+
+        '<div style="margin-top:4px;"><button class="dirbtn" style="background:var(--green);" onclick="submitRequest()">Submit job</button> <button class="dirbtn" style="background:var(--muted);" onclick="document.getElementById(\'reqForm\').innerHTML=\'\'">Cancel</button> <span id="rqMsg" style="font-size:13px;margin-left:6px;"></span></div>'+
+        '<div class="addr" style="margin-top:8px;">Need to attach documents/photos? Submit the job first, then reply to our text/email with them.</div></div>';
+    }
+    function submitRequest(){
+      var cust=(document.getElementById('rqCust').value||'').trim();
+      var msg=document.getElementById('rqMsg');
+      if(!cust){ msg.textContent='Customer name required.'; return; }
+      msg.textContent='Submitting…';
+      jsonp({api:'submit', code:CODE, customer:cust, address:document.getElementById('rqAddr').value, phone:document.getElementById('rqPhone').value, notes:document.getElementById('rqNotes').value}, function(r){
+        if(r&&r.ok){ document.getElementById('reqForm').innerHTML='<div class="job" style="color:var(--green);font-weight:700;">✓ Job submitted — we\'ll schedule a measure and let you know.</div>'; load(); }
+        else { msg.textContent=(r&&r.error)||'Failed.'; }
+      });
+    }
+    function renderRequests(list){
+      REQS=list||[]; var el=document.getElementById('reqList');
+      var open=REQS.filter(function(r){ return r.status!=='SCHEDULED'; });
+      if(!open.length){ el.innerHTML=''; return; }
+      el.innerHTML='<div class="lbl">Your requests</div>'+open.map(function(r){
+        var actions='';
+        if(String(r.status).toUpperCase()==='MEASURE_PROPOSED') actions='<div style="margin-top:8px;"><button class="dirbtn" style="background:var(--green);" onclick="respond(\''+r.id+'\',true)">Accept '+esc(r.measureDate)+'</button> <button class="dirbtn" style="background:var(--bad);" onclick="respond(\''+r.id+'\',false)">Decline</button></div>';
+        return '<div class="job"><div class="job-head"><div><div class="cust">'+esc(r.customer||'')+'</div><div class="addr">'+esc(r.address||'')+'</div></div>'+reqPill(r.status)+'</div>'+
+          (r.measureDate?('<div class="meta"><div>Measure: <b>'+esc(r.measureDate)+'</b></div></div>'):'')+
+          (r.notes?('<div class="addr" style="margin-top:6px;">'+esc(r.notes)+'</div>'):'')+ actions +'</div>';
+      }).join('');
+    }
+    function respond(id, accept){
+      jsonp({api:'respond', code:CODE, requestId:id, accept:accept}, function(){ load(); });
+    }
+
+    // ==== docs + jobs ====
+    function renderDocs(docs){
+      var lbl=document.getElementById('docsLbl'), box=document.getElementById('docs');
+      if(!docs||!docs.length){ lbl.style.display='none'; box.innerHTML=''; return; }
+      lbl.style.display='block';
+      box.innerHTML = docs.map(function(d){ return '<a class="job" style="display:block;text-decoration:none;color:inherit;" href="'+esc(d.url)+'" target="_blank" rel="noopener">📄 '+esc(d.name)+'</a>'; }).join('');
+    }
+    function render(data){
+      document.getElementById('coName').textContent = data.company || 'Contractor Portal';
+      renderDocs(data.deployedDocs||[]);
+      JOBS = data.jobs||[];
+      var w=document.getElementById('jobs');
+      document.getElementById('jobsLbl').style.display = JOBS.length ? 'block' : 'none';
+      if(!JOBS.length){ w.innerHTML='<div class="empty">No scheduled jobs yet.</div>'; return; }
+      w.innerHTML = JOBS.map(function(j,i){
+        return '<div class="job">'+
+          '<div class="job-head" onclick="toggle('+i+')">'+
+            '<div><div class="cust">'+esc(j.customer||'Job')+'</div><div class="addr">'+esc(j.address||'')+'</div></div>'+
+            pill(j.status)+
+          '</div>'+
+          '<div class="meta">'+
+            '<div><b>'+esc(j.date||'')+'</b>'+(j.timeSlot?(' · '+esc(j.timeSlot)):'')+'</div>'+
+            '<div>'+esc(scope(j))+'</div>'+
+            (j.finished?('<div>Completed '+esc(j.finished)+'</div>'):(j.etaTime?('<div>ETA '+esc(j.etaTime)+'</div>'):''))+
+          '</div>'+
+          '<div class="detail" id="d'+i+'"></div>'+
+        '</div>';
+      }).join('');
+    }
+    function toggle(i){
+      var el=document.getElementById('d'+i); if(!el) return;
+      if(el.classList.contains('open')){ el.classList.remove('open'); return; }
+      el.classList.add('open');
+      var j=JOBS[i];
+      el.innerHTML='<div class="lbl">Location</div><div class="map" id="m'+i+'"><div class="skel">Loading map…</div></div>'+
+        (j.address?'<a class="dirbtn" href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(j.address)+'" target="_blank" rel="noopener">Directions</a>':'')+
+        '<div class="lbl" style="margin-top:14px;">Gutter map &amp; photos</div><div class="photos" id="p'+i+'"><div class="skel">Loading…</div></div>';
+      jsonp({api:'map', code:CODE, address:j.address||''}, function(r){ var m=document.getElementById('m'+i); if(!m) return; var uri=r&&r.ok?r.map:''; m.innerHTML=uri?'<img src="'+uri+'" alt="map">':'<div class="skel">Map unavailable.</div>'; });
+      jsonp({api:'photos', code:CODE, week:j.week, row:j.row}, function(r){ renderPhotos(i, (r&&r.ok)?r.photos:[]); });
+    }
+    function renderPhotos(i, photos){
+      var el=document.getElementById('p'+i); if(!el) return;
+      if(!photos||!photos.length){ el.innerHTML='<div class="skel">No photos uploaded yet.</div>'; return; }
+      el.innerHTML=photos.map(function(p){
+        if(p.dataUrl) return '<a href="'+esc(p.url)+'" target="_blank" rel="noopener"><img src="'+p.dataUrl+'" alt="photo"></a>';
+        if(p.url) return '<a class="file" href="'+esc(p.url)+'" target="_blank" rel="noopener">▶ View file</a>';
+        return '';
+      }).join('');
+    }
+    load();
+  </script>
+</body>
+</html>
