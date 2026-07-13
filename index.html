@@ -98,25 +98,40 @@
       if(s==='SCHEDULED') return '<span class="pill p-done">Scheduled</span>';
       return '<span class="pill p-sched">Submitted</span>';
     }
-    function showReqForm(){
+    var EDITING = '';
+    function showReqForm(existing){
+      EDITING = existing ? existing.id : '';
+      var e = existing || {};
       document.getElementById('reqForm').innerHTML =
-        '<div class="job"><div class="cust" style="margin-bottom:8px;">New job</div>'+
-        '<input id="rqCust" placeholder="Customer name *">'+
-        '<input id="rqAddr" placeholder="Address">'+
-        '<input id="rqPhone" placeholder="Phone" inputmode="numeric">'+
-        '<textarea id="rqNotes" rows="3" placeholder="Job description / notes"></textarea>'+
-        '<div style="margin-top:4px;"><button class="dirbtn" style="background:var(--green);" onclick="submitRequest()">Submit job</button> <button class="dirbtn" style="background:var(--muted);" onclick="document.getElementById(\'reqForm\').innerHTML=\'\'">Cancel</button> <span id="rqMsg" style="font-size:13px;margin-left:6px;"></span></div>'+
-        '<div class="addr" style="margin-top:8px;">Need to attach documents/photos? Submit the job first, then reply to our text/email with them.</div></div>';
+        '<div class="job"><div class="cust" style="margin-bottom:8px;">'+(EDITING?'Edit job':'New job')+'</div>'+
+        '<input id="rqCust" placeholder="Customer name *" value="'+esc(e.customer||'')+'">'+
+        '<input id="rqAddr" placeholder="Address" value="'+esc(e.address||'')+'">'+
+        '<input id="rqPhone" placeholder="Phone" inputmode="numeric" value="'+esc(e.phone||'')+'">'+
+        '<textarea id="rqNotes" rows="3" placeholder="Job description / notes">'+esc(e.notes||'')+'</textarea>'+
+        '<div style="margin-top:4px;"><button class="dirbtn" style="background:var(--green);" onclick="submitRequest()">'+(EDITING?'Save changes':'Submit job')+'</button> <button class="dirbtn" style="background:var(--muted);" onclick="closeReqForm()">Cancel</button> <span id="rqMsg" style="font-size:13px;margin-left:6px;"></span></div>'+
+        (EDITING?'<div class="addr" style="margin-top:8px;">Editing resets any measure day we proposed — we\'ll reschedule.</div>':'<div class="addr" style="margin-top:8px;">Need to attach documents/photos? Submit the job first, then reply to our text/email with them.</div>')+
+        '</div>';
+      window.scrollTo(0,0);
     }
+    function closeReqForm(){ EDITING=''; document.getElementById('reqForm').innerHTML=''; }
     function submitRequest(){
       var cust=(document.getElementById('rqCust').value||'').trim();
       var msg=document.getElementById('rqMsg');
       if(!cust){ msg.textContent='Customer name required.'; return; }
-      msg.textContent='Submitting…';
-      jsonp({api:'submit', code:CODE, customer:cust, address:document.getElementById('rqAddr').value, phone:document.getElementById('rqPhone').value, notes:document.getElementById('rqNotes').value}, function(r){
-        if(r&&r.ok){ document.getElementById('reqForm').innerHTML='<div class="job" style="color:var(--green);font-weight:700;">✓ Job submitted — we\'ll schedule a measure and let you know.</div>'; load(); }
+      msg.textContent = EDITING ? 'Saving…' : 'Submitting…';
+      var params={ code:CODE, customer:cust, address:document.getElementById('rqAddr').value, phone:document.getElementById('rqPhone').value, notes:document.getElementById('rqNotes').value };
+      params.api = EDITING ? 'editRequest' : 'submit';
+      if(EDITING) params.requestId = EDITING;
+      jsonp(params, function(r){
+        if(r&&r.ok){ EDITING=''; document.getElementById('reqForm').innerHTML='<div class="job" style="color:var(--green);font-weight:700;">✓ '+(params.api==='editRequest'?'Changes saved — the team was notified.':'Job submitted — we\'ll schedule a measure and let you know.')+'</div>'; load(); }
         else { msg.textContent=(r&&r.error)||'Failed.'; }
       });
+    }
+    function editRequest(id){ var r=REQS.filter(function(x){return x.id===id;})[0]; if(r) showReqForm(r); }
+    function deleteRequest(id){
+      var r=REQS.filter(function(x){return x.id===id;})[0]; if(!r) return;
+      if(!confirm('Delete this job request for '+(r.customer||'this customer')+'? The Flow Factory team will be notified.')) return;
+      jsonp({api:'deleteRequest', code:CODE, requestId:id}, function(res){ if(res&&res.ok){ load(); } else { alert((res&&res.error)||'Could not delete.'); } });
     }
     function renderRequests(list){
       REQS=list||[]; var el=document.getElementById('reqList');
@@ -125,9 +140,10 @@
       el.innerHTML='<div class="lbl">Your requests</div>'+open.map(function(r){
         var actions='';
         if(String(r.status).toUpperCase()==='MEASURE_PROPOSED') actions='<div style="margin-top:8px;"><button class="dirbtn" style="background:var(--green);" onclick="respond(\''+r.id+'\',true)">Accept '+esc(r.measureDate)+'</button> <button class="dirbtn" style="background:var(--bad);" onclick="respond(\''+r.id+'\',false)">Decline</button></div>';
+        var manage='<div style="margin-top:8px;"><button class="dirbtn" style="background:var(--accent);padding:6px 12px;" onclick="editRequest(\''+r.id+'\')">Edit</button> <button class="dirbtn" style="background:var(--bad);padding:6px 12px;" onclick="deleteRequest(\''+r.id+'\')">Delete</button></div>';
         return '<div class="job"><div class="job-head"><div><div class="cust">'+esc(r.customer||'')+'</div><div class="addr">'+esc(r.address||'')+'</div></div>'+reqPill(r.status)+'</div>'+
           (r.measureDate?('<div class="meta"><div>Measure: <b>'+esc(r.measureDate)+'</b></div></div>'):'')+
-          (r.notes?('<div class="addr" style="margin-top:6px;">'+esc(r.notes)+'</div>'):'')+ actions +'</div>';
+          (r.notes?('<div class="addr" style="margin-top:6px;">'+esc(r.notes)+'</div>'):'')+ actions + manage +'</div>';
       }).join('');
     }
     function respond(id, accept){
