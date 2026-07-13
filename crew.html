@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>Flow Factory — Crew</title>
+    <style>
+      :root { --navy:#0f2440; --navy-2:#163356; --green:#2e7d32; --green-2:#43a047; --bg:#eef2f7; --card:#fff; --ink:#16243b; --muted:#64748b; --line:#e2e8f0; --accent:#2563eb; }
+      * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+      html, body { margin:0; padding:0; }
+      body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--ink); font-size:16px; line-height:1.4; }
+      .topbar { background:linear-gradient(135deg,var(--navy),var(--navy-2)); color:#fff; padding:16px 18px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:5; }
+      .brand { display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.2px; }
+      .topbar .who { font-size:13px; opacity:.9; text-align:right; }
+      .topbar .who a { color:#cfe3ff; text-decoration:none; font-size:12px; }
+      .wrap { max-width:720px; margin:0 auto; padding:16px; }
+      .login { max-width:420px; margin:8vh auto; padding:0 18px; }
+      .login .card { background:var(--card); border-radius:16px; padding:22px; box-shadow:0 10px 30px rgba(15,36,64,.12); }
+      .login h1 { margin:0 0 4px; font-size:20px; }
+      .login p { margin:0 0 18px; color:var(--muted); font-size:14px; }
+      label { display:block; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:14px 0 6px; }
+      select, input { width:100%; padding:13px 12px; font-size:16px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--ink); }
+      .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; margin-top:18px; padding:14px; font-size:16px; font-weight:700; border:none; border-radius:12px; background:var(--green); color:#fff; cursor:pointer; }
+      .btn:active { transform:translateY(1px); }
+      .btn.secondary { background:#eef2f7; color:var(--navy); border:1px solid var(--line); }
+      .err { color:#b91c1c; font-size:14px; margin-top:12px; min-height:18px; }
+      .tabs { display:flex; gap:8px; margin:4px 0 14px; }
+      .tab { flex:1; text-align:center; padding:11px 8px; border-radius:12px; font-weight:700; font-size:14px; background:#fff; color:var(--muted); border:1px solid var(--line); cursor:pointer; }
+      .tab.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+      .tab .count { display:inline-block; margin-left:6px; font-size:12px; opacity:.8; }
+      .job { background:var(--card); border-radius:14px; padding:14px 16px; margin-bottom:12px; box-shadow:0 2px 8px rgba(15,36,64,.06); cursor:pointer; border-left:5px solid var(--green-2); transition:transform .1s ease; }
+      .job:active { transform:scale(.99); }
+      #jobList { animation:ffFade .2s ease both; }
+      @keyframes ffFade { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+      .job.cancelled { border-left-color:#cbd5e1; opacity:.65; }
+      .job.cancelled .job-cust { text-decoration:line-through; }
+      .job-top { display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+      .job-cust { font-size:17px; font-weight:800; }
+      .seq { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; margin-right:8px; border-radius:50%; background:var(--navy); color:#fff; font-size:13px; font-weight:800; vertical-align:middle; }
+      .dispatch-box { background:var(--bg); border-radius:12px; padding:12px 14px; margin:4px 0 14px; }
+      .dispatch-box .st { font-size:14px; font-weight:700; margin-bottom:10px; }
+      .dispatch-actions { display:flex; gap:10px; }
+      .dispatch-actions button { flex:1; padding:14px; border-radius:10px; font-weight:800; font-size:15px; border:1px solid var(--line); cursor:pointer; }
+      .dispatch-actions .start { background:var(--accent); color:#fff; border-color:var(--accent); }
+      .dispatch-actions .finish { background:var(--green); color:#fff; border-color:var(--green); }
+      .dispatch-actions button.ghost { background:#fff; color:var(--muted); }
+      .dispatch-actions button:disabled { opacity:.5; cursor:default; }
+      .job-time { font-size:13px; color:var(--muted); white-space:nowrap; }
+      .job-sub { color:var(--muted); font-size:14px; margin-top:3px; }
+      .job-items { margin-top:6px; font-size:13px; background:var(--bg); border-radius:8px; padding:7px 9px; overflow-wrap:anywhere; }
+      .job-pay-line { margin-top:6px; font-size:14px; color:var(--green); font-weight:600; }
+      .photo-box { margin-top:16px; border-top:1px solid var(--line); padding-top:12px; }
+      .photo-head { display:flex; align-items:center; justify-content:space-between; font-weight:700; font-size:14px; margin-bottom:8px; }
+      .photo-add { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:7px 12px; font-weight:700; font-size:13px; cursor:pointer; }
+      .photo-grid { display:flex; flex-wrap:wrap; gap:6px; }
+      .photo-grid img { width:84px; height:84px; object-fit:cover; border-radius:8px; display:block; }
+      .media-link { display:inline-flex; align-items:center; justify-content:center; width:84px; height:84px; border:1px solid var(--line); border-radius:8px; font-size:12px; font-weight:700; color:var(--accent); text-decoration:none; text-align:center; padding:4px; }
+      .paywk { background:var(--card); border-radius:14px; padding:12px 16px; margin-bottom:12px; box-shadow:0 2px 8px rgba(15,36,64,.06); }
+      .paywk > summary { list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+      .paywk > summary::-webkit-details-marker { display:none; }
+      .paytbl { width:100%; border-collapse:collapse; margin-top:12px; font-size:14px; }
+      .paytbl th { text-align:left; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.04em; padding:4px 0; border-bottom:1px solid var(--line); }
+      .paytbl td { padding:8px 0; border-bottom:1px solid var(--line); vertical-align:top; }
+      .paytbl .ftcol { text-align:right; color:var(--muted); white-space:nowrap; padding-left:8px; }
+      .paytbl .paycol { text-align:right; font-weight:700; white-space:nowrap; padding-left:8px; }
+      .paytbl .bonusrow td { color:var(--green); font-weight:700; }
+      .paytbl .adjrow td { color:var(--accent); }
+      .paytbl .totrow td { font-weight:800; border-top:2px solid var(--line); border-bottom:none; padding-top:9px; }
+      .paysmall { font-size:12px; color:var(--muted); margin-top:2px; }
+      .pay { font-size:22px; font-weight:800; color:var(--green); }
+      .muted { color:var(--muted); font-size:14px; }
+      #printArea { display:none; }
+      @media print { body > *:not(#printArea) { display:none !important; } #printArea { display:block !important; } }
+      .stmt { font-family:Arial,Helvetica,sans-serif; color:#000; padding:8px 4px 28px; page-break-after:always; }
+      .stmt:last-child { page-break-after:auto; }
+      .stmt .sh { display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid #000; padding-bottom:6px; }
+      .stmt .sh .b { font-size:20px; font-weight:800; letter-spacing:1px; }
+      .stmt .meta { margin:10px 0; font-size:14px; line-height:1.6; }
+      .stmt table.pt { width:100%; border-collapse:collapse; font-size:13px; margin-top:6px; }
+      .stmt table.pt th, .stmt table.pt td { border-bottom:1px solid #999; padding:6px 4px; text-align:left; }
+      .stmt table.pt th.r, .stmt table.pt td.r { text-align:right; white-space:nowrap; }
+      .stmt table.pt tr.tt td { font-weight:800; border-top:2px solid #000; border-bottom:none; }
+      .stmt .sm { color:#555; font-size:11px; }
+      .stmt .sig { margin-top:26px; font-size:13px; }
+      .stmt .note { margin-top:14px; font-size:13px; }
+      .pill { display:inline-block; font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px; background:#e8f5e9; color:#1b5e20; letter-spacing:.03em; }
+      .pill.service { background:#e3f2fd; color:#0d47a1; }
+      .pill.cancelled { background:#fee2e2; color:#991b1b; }
+      .empty { text-align:center; color:var(--muted); padding:40px 12px; }
+      .modal { position:fixed; inset:0; background:rgba(8,16,31,.55); display:none; align-items:flex-end; justify-content:center; z-index:20; }
+      .modal.open { display:flex; }
+      .sheet { background:#fff; width:100%; max-width:720px; border-radius:18px 18px 0 0; padding:18px; max-height:92vh; overflow:auto; animation:up .18s ease; }
+      @keyframes up { from { transform:translateY(20px); opacity:.6; } to { transform:translateY(0); opacity:1; } }
+      .sheet h2 { margin:2px 0 2px; font-size:20px; }
+      .sheet .muted { margin-bottom:14px; }
+      .addr-box { background:var(--bg); border-radius:12px; padding:12px 14px; margin:10px 0 14px; }
+      .addr-box .a { font-size:16px; font-weight:600; }
+      .job-map { border-radius:12px; overflow:hidden; margin:0 0 14px; background:var(--bg); }
+      .job-map img { width:100%; display:block; }
+      .map-skel { padding:28px 12px; text-align:center; color:var(--muted); font-size:13px; }
+      .addr-actions { display:flex; gap:10px; margin-top:10px; }
+      .addr-actions a, .addr-actions button { flex:1; text-align:center; padding:12px; border-radius:10px; font-weight:700; font-size:14px; text-decoration:none; border:1px solid var(--line); background:#fff; color:var(--navy); cursor:pointer; }
+      .addr-actions .go { background:var(--accent); color:#fff; border-color:var(--accent); }
+      .row { display:flex; justify-content:space-between; gap:14px; padding:10px 0; border-bottom:1px solid var(--line); }
+      .row:last-child { border-bottom:none; }
+      .row .k { color:var(--muted); font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
+      .row .v { text-align:right; font-size:15px; overflow-wrap:anywhere; }
+      .closebar { display:flex; justify-content:flex-end; }
+      .closebar button { background:#eef2f7; border:1px solid var(--line); border-radius:10px; padding:8px 14px; font-weight:700; cursor:pointer; }
+      .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:var(--navy); color:#fff; padding:10px 16px; border-radius:10px; font-size:14px; opacity:0; transition:opacity .2s; z-index:40; }
+      .toast.show { opacity:1; }
+    </style>
+  </head>
+  <body>
+    <div id="loginView" class="login">
+      <div class="card">
+        <div style="margin-bottom:16px;text-align:center;"><div class="brand" style="justify-content:center;color:var(--navy);font-size:18px;">FLOW FACTORY</div><div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-top:6px;">CREW PORTAL</div></div>
+        <h1>Sign in</h1>
+        <p>Pick your name and enter the crew PIN to see your jobs.</p>
+        <label for="crewSelect">Your name</label>
+        <select id="crewSelect"><option value="">Loading…</option></select>
+        <label for="pin">Crew PIN (4 digits)</label>
+        <input id="pin" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" autocomplete="off">
+        <button class="btn" onclick="signIn()">View My Jobs</button>
+        <div class="err" id="loginErr"></div>
+      </div>
+    </div>
+    <div id="appView" style="display:none;">
+      <div class="topbar">
+        <div class="brand">FLOW FACTORY</div>
+        <div class="who"><div id="whoName">—</div><a href="#" onclick="refreshCrew();return false;">Refresh</a> · <a href="#" onclick="signOut();return false;">Sign out</a></div>
+      </div>
+      <div class="wrap">
+        <div class="tabs">
+          <div class="tab active" id="tabToday" onclick="showTab('today')">Today <span class="count" id="cToday"></span></div>
+          <div class="tab" id="tabUpcoming" onclick="showTab('upcoming')">Upcoming <span class="count" id="cUpcoming"></span></div>
+          <div class="tab" id="tabPast" onclick="showTab('past')">History <span class="count" id="cPast"></span></div>
+          <div class="tab" id="tabPay" onclick="showTab('pay')">Pay</div>
+        </div>
+        <div id="jobList"></div>
+      </div>
+    </div>
+    <div class="modal" id="jobModal" onclick="closeJob()">
+      <div class="sheet" onclick="event.stopPropagation()">
+        <div class="closebar"><button onclick="closeJob()">Close</button></div>
+        <div id="jobDetail"></div>
+      </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <div id="printArea"></div>
+
+    <script>
+      var APPS = 'https://script.google.com/macros/s/AKfycbxtuuH3QOzdpMlPr2Y_8Jg0qv33sI2Gw01zUPUvHINZ5mVzQNMclRZgr5SKDyQf89Ls/exec';
+      var _n = 0;
+      function jsonp(params, cb){
+        var name = 'ffcb_' + (++_n) + '_' + Math.floor(Math.random()*1e6);
+        var s = document.createElement('script');
+        var timer = setTimeout(function(){ done({ok:false, error:'Timed out.'}); }, 25000);
+        function done(data){ if(!window[name]) return; clearTimeout(timer); try{ delete window[name]; }catch(e){ window[name]=undefined; } if(s.parentNode) s.parentNode.removeChild(s); cb(data); }
+        window[name] = function(data){ done(data); };
+        var q = Object.keys(params).map(function(k){ return encodeURIComponent(k)+'='+encodeURIComponent(params[k]==null?'':params[k]); }).join('&');
+        s.src = APPS + '?' + q + '&callback=' + name;
+        s.onerror = function(){ done({ok:false, error:'Network error.'}); };
+        document.body.appendChild(s);
+      }
+
+      var DATA = null, CURRENT = 'today', BRAND = {};
+      function esc(v){ return String(v==null?'':v).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+      function money(v){ var n=Number(v)||0; return '$'+n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+      function toast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},1600); }
+
+      window.addEventListener('load', function(){
+        jsonp({api:'crewBrand'}, function(r){ BRAND=(r&&r.ok&&r.brand)||{}; });
+        jsonp({api:'crewNames'}, function(r){
+          var names=(r&&r.ok&&r.names)||[];
+          var sel=document.getElementById('crewSelect');
+          if(!r||!r.ok){ sel.innerHTML='<option value="">Could not load names</option>'; return; }
+          sel.innerHTML='<option value="">Select your name…</option>'+ names.map(function(n){return '<option>'+esc(n)+'</option>';}).join('');
+          var savedName=localStorage.getItem('ff_crew'), savedPin=localStorage.getItem('ff_pin');
+          if(savedName){ sel.value=savedName; }
+          if(savedName&&savedPin){ document.getElementById('pin').value=savedPin; signIn(true); }
+        });
+      });
+
+      function signIn(silent){
+        var name=document.getElementById('crewSelect').value;
+        var pin=document.getElementById('pin').value.trim();
+        var err=document.getElementById('loginErr'); err.textContent='';
+        if(!name){ err.textContent='Pick your name.'; return; }
+        if(!pin){ err.textContent='Enter the PIN.'; return; }
+        err.textContent='Loading your jobs…';
+        jsonp({api:'crewJobs', name:name, pin:pin}, function(r){
+          if(!r||!r.ok){ err.textContent=(r&&r.error)||'Could not sign in.'; if(silent){ localStorage.removeItem('ff_pin'); } return; }
+          var data=r.data; DATA=data;
+          localStorage.setItem('ff_crew',name); localStorage.setItem('ff_pin',pin);
+          document.getElementById('whoName').textContent=data.crew;
+          document.getElementById('loginView').style.display='none';
+          document.getElementById('appView').style.display='block';
+          document.getElementById('cToday').textContent=data.today.length;
+          document.getElementById('cUpcoming').textContent=data.upcoming.length;
+          document.getElementById('cPast').textContent=data.past.length;
+          showTab('today');
+        });
+      }
+      function signOut(){ localStorage.removeItem('ff_pin'); location.reload(); }
+      function refreshCrew(){ var n=localStorage.getItem('ff_crew'), p=localStorage.getItem('ff_pin'); if(n&&p){ toast('Refreshing…'); signIn(true); } }
+
+      function showTab(which){
+        CURRENT=which;
+        ['today','upcoming','past','pay'].forEach(function(t){ document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('active', t===which); });
+        if(which==='pay'){ renderPay(); return; }
+        var list=DATA[which]||[];
+        var label = which==='today'?'today':(which==='upcoming'?'upcoming':'in your history');
+        document.getElementById('jobList').innerHTML = list.length ? list.map(function(j,i){ return jobCard(j,i); }).join('') : '<div class="empty">No jobs '+label+'.</div>';
+      }
+
+      function renderPay(){
+        var pay=(DATA&&DATA.pay)||[];
+        if(!pay.length){ document.getElementById('jobList').innerHTML='<div class="empty">No pay to show yet.</div>'; return; }
+        function isPaid(p){ return String(p.payrollStatus||'').toUpperCase()==='PAID'; }
+        var nextIdx = pay.findIndex ? pay.findIndex(function(p){return !isPaid(p);}) : -1;
+        var html = '<div class="muted" style="margin-bottom:10px;">You\'re paid a week behind — each week\'s pay lands the Friday shown. Tap a week to see the jobs. Numbers off? Let the office know.</div>';
+        html += '<button class="btn secondary" style="margin:0 0 14px;" onclick="printPayAll()">🖨 Print / Save all weeks (PDF)</button>';
+        html += pay.map(function(p,i){
+          var next=(i===nextIdx), paid=isPaid(p);
+          var sub = paid ? ('Paid'+(p.paidDate?(' '+esc(p.paidDate)):'')) : ((next?'Next paycheck — ':'Pays ')+esc(p.payday));
+          var jobs=p.jobs||[];
+          var rows=jobs.map(function(j){
+            var ft=[];
+            if(Number(j.gutterFt)) ft.push(j.gutterFt+"' gutter");
+            if(Number(j.filterFt)) ft.push(j.filterFt+"' filter");
+            if(Number(j.dripFt)) ft.push(j.dripFt+"' drip edge");
+            var ftTxt=ft.join(' · ')||(String(j.serviceType).toUpperCase()==='SERVICE'?'service':'—');
+            var s=[esc(j.address||''),esc(j.date||'')].filter(Boolean).join(' · ');
+            return '<tr><td>'+esc(j.customer||'Job')+'<div class="paysmall">'+s+'</div></td><td class="ftcol">'+esc(ftTxt)+'</td><td class="paycol">'+money(j.pay)+'</td></tr>';
+          }).join('');
+          if(!rows) rows='<tr><td colspan="3" class="paysmall">No itemized jobs found for this week.</td></tr>';
+          var bonusDayTxt=(p.bonusDays&&p.bonusDays.length)?' ('+p.bonusDays.map(esc).join(', ')+')':'';
+          var bonusRow = Number(p.driverBonus) ? '<tr class="bonusrow"><td>Driver bonus'+bonusDayTxt+'</td><td class="ftcol"></td><td class="paycol">'+money(p.driverBonus)+'</td></tr>' : '';
+          var tot=[]; tot.push((Number(p.totalFootage)||0)+"' gutter");
+          if(Number(p.totalFilterFt)) tot.push(p.totalFilterFt+"' filter");
+          if(Number(p.totalDripFt)) tot.push(p.totalDripFt+"' drip edge");
+          var adjRows=(p.adjustments||[]).map(function(a){ return '<tr class="adjrow"><td>'+esc(a.note||'Adjustment')+'</td><td class="ftcol"></td><td class="paycol">'+money(a.amount)+'</td></tr>'; }).join('');
+          var netTotal=(p.netTotal!=null)?p.netTotal:p.total;
+          var totRow='<tr class="totrow"><td>Total</td><td class="ftcol">'+esc(tot.join(' · '))+'</td><td class="paycol">'+money(netTotal)+'</td></tr>';
+          return '<details class="paywk"'+(next?' open':'')+(next?' style="border:2px solid var(--green);"':'')+'>'+
+            '<summary><div><div class="job-cust">Week '+esc(p.week)+'</div><div class="job-sub">'+sub+'</div></div><div class="pay" style="font-size:18px;">'+money(netTotal)+'</div></summary>'+
+            '<table class="paytbl"><thead><tr><th>Job</th><th class="ftcol">Footage</th><th class="paycol">Pay</th></tr></thead><tbody>'+rows+bonusRow+adjRows+totRow+'</tbody></table>'+
+            '<button class="btn secondary" style="margin-top:12px;" onclick="event.stopPropagation();printPayWeek('+i+')">🖨 Print / Save this week (PDF)</button>'+
+          '</details>';
+        }).join('');
+        document.getElementById('jobList').innerHTML=html;
+      }
+
+      function dispatchPill(j){
+        var s=String(j.dispatchStatus||'PENDING').toUpperCase();
+        if(s==='ENROUTE') return '<span class="pill" style="background:#fef3c7;color:#92400e;">EN ROUTE'+(j.etaTime?(' · ETA '+esc(j.etaTime)):'')+'</span>';
+        if(s==='DONE') return '<span class="pill" style="background:#dcfce7;color:#166534;">DONE'+(j.finished?(' '+esc(j.finished)):'')+'</span>';
+        return '<span class="pill" style="background:#eef2f7;color:#475569;">NOT STARTED</span>';
+      }
+      function stmtHtml(name,p){
+        var jobs=p.jobs||[];
+        var rows=jobs.map(function(j){
+          var ft=[];
+          if(Number(j.gutterFt)) ft.push(j.gutterFt+"' gutter");
+          if(Number(j.filterFt)) ft.push(j.filterFt+"' filter");
+          if(Number(j.dripFt)) ft.push(j.dripFt+"' drip edge");
+          var s=[esc(j.address||''),esc(j.date||'')].filter(Boolean).join(' · ');
+          return '<tr><td>'+esc(j.customer||'Job')+' <span class="sm">'+s+'</span></td><td class="r">'+(ft.join(' · ')||'—')+'</td><td class="r">'+money(j.pay)+'</td></tr>';
+        }).join('') || '<tr><td colspan="3" class="sm">No itemized jobs.</td></tr>';
+        var bonusDayTxt=(p.bonusDays&&p.bonusDays.length)?' ('+p.bonusDays.map(esc).join(', ')+')':'';
+        var bonus=Number(p.driverBonus)?'<tr><td>Driver bonus'+bonusDayTxt+'</td><td class="r"></td><td class="r">'+money(p.driverBonus)+'</td></tr>':'';
+        var adj=(p.adjustments||[]).map(function(a){ return '<tr><td>'+esc(a.note||'Adjustment')+'</td><td class="r"></td><td class="r">'+money(a.amount)+'</td></tr>'; }).join('');
+        var netTotal=(p.netTotal!=null)?p.netTotal:p.total;
+        var paid=String(p.payrollStatus||'').toUpperCase()==='PAID';
+        var status=paid?('PAID'+(p.paidDate?(' '+esc(p.paidDate)):'')):('Pays '+esc(p.payday||''));
+        return '<div class="stmt"><div class="sh"><div class="b">FLOW FACTORY</div><div>Pay Statement</div></div>'+
+          '<div class="meta"><b>'+esc(name||'')+'</b><br>Week '+esc(p.week||'')+' &middot; '+status+'</div>'+
+          '<table class="pt"><thead><tr><th>Job</th><th class="r">Footage</th><th class="r">Pay</th></tr></thead><tbody>'+rows+bonus+adj+
+          '<tr class="tt"><td>Total</td><td class="r">'+esc((function(){var t=[(Number(p.totalFootage)||0)+"' gutter"];if(Number(p.totalFilterFt))t.push(p.totalFilterFt+"' filter");if(Number(p.totalDripFt))t.push(p.totalDripFt+"' drip edge");return t.join(' · ');})())+'</td><td class="r">'+money(netTotal)+'</td></tr>'+
+          '</tbody></table><div class="sig">Verified by: ________________________&nbsp;&nbsp;&nbsp;Date: _____________</div><div class="note">Notes: ___________________________________________________</div></div>';
+      }
+      function doPrint(html){ document.getElementById('printArea').innerHTML=html; setTimeout(function(){ window.print(); },50); }
+      function printPayWeek(i){ var p=(DATA&&DATA.pay)?DATA.pay[i]:null; if(!p) return; doPrint(stmtHtml(DATA.viewerName||DATA.crew,p)); }
+      function printPayAll(){ var pay=(DATA&&DATA.pay)||[]; if(!pay.length) return; doPrint(pay.map(function(p){return stmtHtml(DATA.viewerName||DATA.crew,p);}).join('')); }
+
+      function jobCard(j,i){
+        var cancelled=String(j.status).toUpperCase()==='CANCELLED', isToday=CURRENT==='today';
+        var typePill = cancelled ? '<span class="pill cancelled">CANCELLED</span>' : (String(j.serviceType).toUpperCase()==='SERVICE' ? '<span class="pill service">SERVICE</span>' : '<span class="pill">INSTALL</span>');
+        var orderBadge = (isToday && !cancelled && j.seq) ? '<span class="seq">'+esc(j.seq)+'</span>' : '';
+        return '<div class="job'+(cancelled?' cancelled':'')+'" onclick="openJob(\''+CURRENT+'\','+i+')">'+
+          '<div class="job-top"><div class="job-cust">'+orderBadge+esc(j.customer||'Job')+'</div><div class="job-time">'+esc(j.date||'')+'</div></div>'+
+          '<div class="job-sub">'+esc(j.address||'')+'</div>'+
+          (j.work?'<div class="job-items">'+esc(j.work)+'</div>':'')+
+          (!cancelled&&!isToday&&Number(j.crewPay)?'<div class="job-pay-line">Your pay: <b>'+money(j.crewPay)+'</b></div>':'')+
+          '<div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'+typePill+(isToday&&!cancelled?dispatchPill(j):'')+(j.driverBonus?'<span class="pill" style="background:#16a34a;color:#fff;">+'+money(100)+' DRIVE</span>':'')+'</div>'+
+        '</div>';
+      }
+
+      function openJob(tab,i){
+        var j=(DATA[tab]||[])[i]; if(!j) return;
+        var addr=j.address||'';
+        var dir='https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(addr);
+        var cancelled=String(j.status).toUpperCase()==='CANCELLED';
+        var rows='';
+        function row(k,v){ if(v==null||String(v).trim()==='') return ''; return '<div class="row"><div class="k">'+esc(k)+'</div><div class="v">'+esc(v)+'</div></div>'; }
+        rows+=row('Date', j.date); rows+=row('Type', j.serviceType); rows+=row('Items', j.work); rows+=row('Notes', j.notes);
+        if(j.driverBonus) rows+=row('Driver bonus','+'+money(100)+' (long drive)');
+        if(cancelled) rows+=row('Status','CANCELLED');
+        var payBlock = (!cancelled && tab!=='today' && Number(j.crewPay)) ? '<div class="row"><div class="k">Your pay (this job)</div><div class="v pay">'+money(j.crewPay)+'</div></div>' : '';
+        document.getElementById('jobDetail').innerHTML=
+          '<h2>'+esc(j.customer||'Job')+'</h2>'+
+          '<div class="muted">'+esc(j.serviceType||'')+(j.week?(' · '+esc(j.week)):'')+'</div>'+
+          (addr?('<div class="addr-box"><div class="a">'+esc(addr)+'</div><div class="addr-actions">'+
+            '<button onclick="copyAddr('+JSON.stringify(addr).replace(/"/g,'&quot;')+')">Copy address</button>'+
+            '<a class="go" href="'+esc(dir)+'" target="_blank" rel="noopener">Directions</a></div></div>'):'')+
+          (addr?'<div class="job-map" id="crewJobMap"><div class="map-skel">Loading map…</div></div>':'')+
+          (tab==='today'&&!cancelled?dispatchBox(j):'')+
+          rows + payBlock +
+          (!cancelled?('<div class="photo-box"><div class="photo-head"><span>Photos &amp; reference</span>'+
+            '<button class="photo-add" onclick="document.getElementById(\'jobPhotoInput\').click()">📷 Add</button></div>'+
+            '<input type="file" id="jobPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="uploadJobPhoto(this)">'+
+            '<div id="jobPhotos" class="photo-grid"><div class="map-skel">Loading…</div></div></div>'):'');
+        document.getElementById('jobModal').classList.add('open');
+        if(addr) loadJobMap(addr,'crewJobMap');
+        if(!cancelled) loadJobPhotos(j.week, j.row);
+      }
+
+      var PHOTO_WEEK='', PHOTO_ROW=0;
+      function loadJobPhotos(week,row){
+        PHOTO_WEEK=week; PHOTO_ROW=row;
+        var name=localStorage.getItem('ff_crew'), pin=localStorage.getItem('ff_pin');
+        jsonp({api:'crewPhotos', name:name, pin:pin, week:week, row:row}, function(r){ renderJobPhotos((r&&r.ok)?r.photos:[]); });
+      }
+      function renderJobPhotos(photos){
+        var el=document.getElementById('jobPhotos'); if(!el) return;
+        if(!photos||!photos.length){ el.innerHTML='<div class="paysmall">No photos yet — tap Add to snap one.</div>'; return; }
+        el.innerHTML=photos.map(function(p){
+          if(p.dataUrl) return '<a href="'+esc(p.url)+'" target="_blank" rel="noopener"><img src="'+p.dataUrl+'" alt="job photo"></a>';
+          if(p.url) return '<a href="'+esc(p.url)+'" target="_blank" rel="noopener" class="media-link">▶ View file</a>';
+          return '';
+        }).join('');
+      }
+      function uploadJobPhoto(input){
+        var f=input.files&&input.files[0]; if(!f) return;
+        var name=localStorage.getItem('ff_crew'), pin=localStorage.getItem('ff_pin');
+        var week=PHOTO_WEEK, row=PHOTO_ROW;
+        toast('Uploading photo…');
+        resizeImage(f, 1280, 0.7, function(dataUrl){
+          // JSONP is GET-only, so an image goes up as a no-cors POST; then we
+          // reload photos to show it (the opaque response can't be read).
+          fetch(APPS, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({ action:'crewPhoto', name:name, pin:pin, week:week, row:row, dataUrl:dataUrl, filename:f.name }) })
+            .then(function(){ setTimeout(function(){ loadJobPhotos(week,row); toast('Photo added'); }, 1500); })
+            .catch(function(){ toast('Upload failed'); });
+        });
+        input.value='';
+      }
+      function resizeImage(file,maxDim,quality,cb){
+        var reader=new FileReader();
+        reader.onload=function(e){
+          var img=new Image();
+          img.onload=function(){
+            var w=img.width,h=img.height;
+            if(w>h&&w>maxDim){ h=Math.round(h*maxDim/w); w=maxDim; } else if(h>maxDim){ w=Math.round(w*maxDim/h); h=maxDim; }
+            var c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h);
+            try{ cb(c.toDataURL('image/jpeg',quality)); }catch(err){ cb(e.target.result); }
+          };
+          img.onerror=function(){ cb(e.target.result); };
+          img.src=e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+      function loadJobMap(addr,elId){
+        var el=document.getElementById(elId); if(!el) return;
+        jsonp({api:'jobMap', address:addr}, function(r){ var uri=(r&&r.ok)?r.map:''; el.innerHTML = uri ? ('<img src="'+uri+'" alt="Map of '+esc(addr)+'">') : ''; });
+      }
+
+      function dispatchBox(j){
+        var s=String(j.dispatchStatus||'PENDING').toUpperCase();
+        var w=JSON.stringify(j.week||'').replace(/"/g,'&quot;');
+        var r=Number(j.row)||0;
+        var status;
+        if(s==='ENROUTE') status='🚚 En route'+(j.etaTime?(' · ETA '+esc(j.etaTime)):'')+(j.started?(' · left '+esc(j.started)):'');
+        else if(s==='DONE') status='✅ Finished'+(j.finished?(' '+esc(j.finished)):'')+(j.etaTo?(' · next: '+esc(j.etaTo)+(j.etaTime?(' ETA '+esc(j.etaTime)):'')):'');
+        else status='Not started yet';
+        var startBtn='<button class="'+(s==='PENDING'?'start':'ghost')+'" onclick="startJob('+w+','+r+')">'+(s==='PENDING'?'Start — leaving now':'Re-send start')+'</button>';
+        var finishBtn='<button class="'+(s==='ENROUTE'?'finish':'ghost')+'"'+(s==='DONE'?' disabled':'')+' onclick="finishJob('+w+','+r+')">'+(s==='DONE'?'Finished':'Finish job')+'</button>';
+        return '<div class="dispatch-box"><div class="st">'+status+'</div><div class="dispatch-actions">'+startBtn+finishBtn+'</div></div>';
+      }
+      function findTodayIdx(week,row){ var t=(DATA&&DATA.today)||[]; for(var i=0;i<t.length;i++){ if(String(t[i].week)===String(week)&&Number(t[i].row)===Number(row)) return i; } return -1; }
+      function dispatchRun(api,week,row,sending,done){
+        var name=localStorage.getItem('ff_crew'), pin=localStorage.getItem('ff_pin');
+        if(!name||!pin){ toast('Please sign in again'); return; }
+        toast(sending);
+        jsonp({api:api, name:name, pin:pin, week:week, row:row}, function(r){
+          if(!r||!r.ok){ toast((r&&r.error)||'Failed — try again'); return; }
+          DATA=r.data;
+          document.getElementById('cToday').textContent=DATA.today.length;
+          if(CURRENT==='today') showTab('today');
+          var idx=findTodayIdx(week,row);
+          if(idx>=0) openJob('today',idx); else closeJob();
+          toast(done);
+        });
+      }
+      function startJob(week,row){ dispatchRun('crewStart',week,row,'Sending…','Office alerted — en route'); }
+      function finishJob(week,row){ dispatchRun('crewFinish',week,row,'Sending…','Office alerted — job finished'); }
+      function closeJob(){ document.getElementById('jobModal').classList.remove('open'); }
+      function copyAddr(addr){
+        if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(addr).then(function(){toast('Address copied');},function(){toast('Copy failed — long-press to copy');}); }
+        else { toast('Long-press the address to copy'); }
+      }
+    </script>
+  </body>
+</html>
