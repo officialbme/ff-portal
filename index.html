@@ -163,6 +163,22 @@
       };
       return m[s]||esc(s.replace(/_/g,' '));
     }
+    function mapBlock(r){
+      if(!r.address) return '';
+      return '<div style="margin-top:10px;"><div class="lbl">Location</div>'+
+        '<div id="rm_'+r.id+'" style="border-radius:10px;overflow:hidden;background:var(--bg);"><div class="skel" style="padding:22px 12px;text-align:center;">Loading map…</div></div>'+
+        '<a href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(r.address)+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:var(--accent);font-weight:700;text-decoration:none;font-size:13px;">Directions ›</a></div>';
+    }
+    function loadReqMaps(){
+      (REQS||[]).forEach(function(r){
+        if(!r.address) return;
+        jsonp({api:'map', code:CODE, address:r.address}, function(res){
+          var el=document.getElementById('rm_'+r.id); if(!el) return;
+          var uri=(res&&res.ok)?res.map:'';
+          el.innerHTML = uri ? '<img src="'+uri+'" alt="map" style="width:100%;display:block;">' : '<div class="skel" style="padding:16px 12px;text-align:center;">Map unavailable.</div>';
+        });
+      });
+    }
     function diagramBlock(r){
       var d=r.diagram||[]; if(!d.length) return '';
       return '<div style="margin-top:10px;"><div class="lbl">Gutter diagram</div>'+d.map(function(x){
@@ -220,8 +236,9 @@
         return '<div class="job"><div class="job-head"><div><div class="cust">'+esc(r.customer||'')+'</div><div class="addr">'+esc(r.address||'')+'</div></div>'+reqPill(r.status)+'</div>'+
           '<div class="addr" style="margin-top:6px;color:var(--ink);">'+statusLine(r)+'</div>'+
           (r.notes?('<div class="addr" style="margin-top:6px;">'+esc(r.notes)+'</div>'):'')+
-          diagramBlock(r)+ estimateBlock(r)+ docsBlock(r)+ notesBlock(r)+ actions + manage +'</div>';
+          mapBlock(r)+ diagramBlock(r)+ estimateBlock(r)+ docsBlock(r)+ notesBlock(r)+ actions + manage +'</div>';
       }).join('');
+      loadReqMaps();
     }
     function respond(id, accept){ jsonp({api:'respond', code:CODE, requestId:id, accept:accept}, function(r){ if(r&&r.ok) load(); else alert((r&&r.error)||'Failed.'); }); }
     function respondEstimate(id, ok){ if(!ok && !confirm('Decline this estimate?')) return; jsonp({api:'respondEstimate', code:CODE, requestId:id, approve:ok}, function(r){ if(r&&r.ok) load(); else alert((r&&r.error)||'Failed.'); }); }
