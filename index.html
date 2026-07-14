@@ -193,7 +193,8 @@
         '<div class="lbl">Estimate</div>'+
         '<div style="font-size:13px;">'+lf+' LF measured <span style="color:var(--muted);">+ '+waste+' ft waste</span> = '+billed+' ft × $'+rate+'/ft</div>'+
         '<div style="font-size:22px;font-weight:800;color:var(--green);margin-top:4px;">$'+Number(r.estimateTotal).toFixed(2)+'</div>'+
-        '<div class="addr" style="margin-top:2px;">Includes '+waste+' ft added for waste.</div></div>';
+        '<div class="addr" style="margin-top:2px;">Includes '+waste+' ft added for waste.</div>'+
+        (r.estimatePdfUrl?('<a href="'+esc(r.estimatePdfUrl)+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:var(--accent);font-weight:700;text-decoration:none;">📄 Download estimate (PDF)</a>'):'')+'</div>';
     }
     function docsBlock(r){
       var d=r.docs||[]; if(!d.length) return '';
