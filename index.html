@@ -185,9 +185,14 @@
     }
     function fmtNoteDate(iso){ try{ var d=new Date(iso); return (d.getMonth()+1)+'/'+d.getDate(); }catch(e){ return ''; } }
     function notesBlock(r){
-      var n=r.contractorNotes||[];
-      var list = n.length ? n.map(function(x){ return '<div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--line);"><span style="color:var(--muted);">'+esc(fmtNoteDate(x.at))+' · </span>'+esc(x.text)+'</div>'; }).join('') : '<div class="addr">No notes yet.</div>';
-      return '<div style="margin-top:10px;"><div class="lbl">Notes for the office</div>'+list+
+      var mine=(r.contractorNotes||[]).map(function(x){ return {by:'you',text:x.text,at:x.at}; });
+      var theirs=(r.officeNotes||[]).map(function(x){ return {by:'office',text:x.text,at:x.at}; });
+      var all=mine.concat(theirs).sort(function(a,b){ return String(a.at)<String(b.at)?-1:1; });
+      var list = all.length ? all.map(function(x){
+        var who=x.by==='office'?'Flow Factory':'You', col=x.by==='office'?'var(--navy)':'var(--accent)';
+        return '<div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--line);"><span style="color:'+col+';font-weight:700;">'+who+'</span> <span style="color:var(--muted);">· '+esc(fmtNoteDate(x.at))+'</span><div>'+esc(x.text)+'</div></div>';
+      }).join('') : '<div class="addr">No notes yet.</div>';
+      return '<div style="margin-top:10px;"><div class="lbl">Notes with the office</div>'+list+
         '<textarea id="nt_'+r.id+'" rows="2" placeholder="Add a note the office will see…" style="width:100%;margin-top:6px;padding:8px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:14px;"></textarea>'+
         '<button class="dirbtn" style="background:var(--accent);padding:6px 12px;margin-top:2px;" onclick="addNote(\''+r.id+'\')">Add note</button></div>';
     }
