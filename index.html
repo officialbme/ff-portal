@@ -183,6 +183,20 @@
       var d=r.docs||[]; if(!d.length) return '';
       return '<div class="addr" style="margin-top:8px;">Files: '+d.map(function(x){ return '<a href="'+esc(x.url)+'" target="_blank" rel="noopener">'+esc(x.name||'file')+'</a>'; }).join(' · ')+'</div>';
     }
+    function fmtNoteDate(iso){ try{ var d=new Date(iso); return (d.getMonth()+1)+'/'+d.getDate(); }catch(e){ return ''; } }
+    function notesBlock(r){
+      var n=r.contractorNotes||[];
+      var list = n.length ? n.map(function(x){ return '<div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--line);"><span style="color:var(--muted);">'+esc(fmtNoteDate(x.at))+' · </span>'+esc(x.text)+'</div>'; }).join('') : '<div class="addr">No notes yet.</div>';
+      return '<div style="margin-top:10px;"><div class="lbl">Notes for the office</div>'+list+
+        '<textarea id="nt_'+r.id+'" rows="2" placeholder="Add a note the office will see…" style="width:100%;margin-top:6px;padding:8px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:14px;"></textarea>'+
+        '<button class="dirbtn" style="background:var(--accent);padding:6px 12px;margin-top:2px;" onclick="addNote(\''+r.id+'\')">Add note</button></div>';
+    }
+    function addNote(id){
+      var el=document.getElementById('nt_'+id), t=(el&&el.value||'').trim();
+      if(!t){ return; }
+      el.disabled=true;
+      jsonp({api:'addNote', code:CODE, requestId:id, text:t}, function(r){ if(r&&r.ok){ load(); } else { el.disabled=false; alert((r&&r.error)||'Could not add note.'); } });
+    }
     function renderRequests(list){
       REQS=list||[]; var el=document.getElementById('reqList');
       if(!REQS.length){ el.innerHTML=''; return; }
@@ -201,7 +215,7 @@
         return '<div class="job"><div class="job-head"><div><div class="cust">'+esc(r.customer||'')+'</div><div class="addr">'+esc(r.address||'')+'</div></div>'+reqPill(r.status)+'</div>'+
           '<div class="addr" style="margin-top:6px;color:var(--ink);">'+statusLine(r)+'</div>'+
           (r.notes?('<div class="addr" style="margin-top:6px;">'+esc(r.notes)+'</div>'):'')+
-          diagramBlock(r)+ estimateBlock(r)+ docsBlock(r)+ actions + manage +'</div>';
+          diagramBlock(r)+ estimateBlock(r)+ docsBlock(r)+ notesBlock(r)+ actions + manage +'</div>';
       }).join('');
     }
     function respond(id, accept){ jsonp({api:'respond', code:CODE, requestId:id, accept:accept}, function(r){ if(r&&r.ok) load(); else alert((r&&r.error)||'Failed.'); }); }
