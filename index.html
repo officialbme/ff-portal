@@ -40,6 +40,7 @@
   <div class="top">
     <div class="brand">FLOW FACTORY</div>
     <div class="co" id="coName">Contractor Portal</div>
+    <div class="co" id="repName" style="font-size:.85em;opacity:.8;font-weight:600;"></div>
   </div>
   <div class="wrap">
     <button id="reqBtn" class="dirbtn" style="background:var(--green);margin-bottom:14px;" onclick="showReqForm()">+ Submit a new job</button>
@@ -266,6 +267,7 @@
     }
     function render(data){
       document.getElementById('coName').textContent = data.company || 'Contractor Portal';
+      document.getElementById('repName').textContent = data.repName ? ('👤 ' + data.repName) : '';
       renderDocs(data.deployedDocs||[]);
       JOBS = data.jobs||[];
       var w=document.getElementById('jobs');
